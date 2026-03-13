@@ -89,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if transcriptionService.isListening {
             transcriptionService.stopListening()
             Task { @MainActor in
-                appState.isDictating = false
+                appState.stopDictation()
             }
         } else {
             Task { @MainActor in
@@ -102,10 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 do {
                     try transcriptionService.startListening()
-                    appState.isDictating = true
+                    appState.startDictation()
                 } catch {
                     print("Dictation error: \(error)")
-                    appState.isDictating = false
+                    appState.stopDictation()
                 }
             }
         }
@@ -134,21 +134,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: TranscriptionDelegate {
     func transcriptionDidUpdate(text: String) {
         Task { @MainActor in
-            appState.updateText(text)
+            appState.updateTranscription(text)
         }
     }
 
     func transcriptionDidFinish(finalText: String) {
         Task { @MainActor in
-            appState.updateText(finalText)
-            appState.isDictating = false
+            appState.updateTranscription(finalText)
+            appState.stopDictation()
         }
     }
 
     func transcriptionDidFail(error: Error) {
         print("Transcription failed: \(error)")
         Task { @MainActor in
-            appState.isDictating = false
+            appState.stopDictation()
         }
     }
 }

@@ -6,6 +6,8 @@ import Combine
 final class AppState: ObservableObject {
     @Published var currentSession = CaptureSession()
     @Published var isDictating = false
+    /// Text that existed before the current dictation session started
+    private var textBeforeDictation: String?
     @Published var isDragOver = false
     @Published var toastMessage: String?
     @Published var toastIsError = false
@@ -27,11 +29,22 @@ final class AppState: ObservableObject {
 
     var hasContent: Bool { !currentSession.isEmpty }
 
+    func startDictation() {
+        // Snapshot existing text so new transcription appends after it
+        textBeforeDictation = currentTextContent()
+        isDictating = true
+    }
+
+    func stopDictation() {
+        isDictating = false
+    }
+
     func addItem(_ item: CaptureItem) {
         currentSession.addItem(item)
         persistSession()
     }
 
+    /// Called with transcription text during dictation, or with user edits.
     func updateText(_ text: String) {
         var items = currentSession.items.filter {
             if case .text = $0 { return false }
@@ -45,6 +58,23 @@ final class AppState: ObservableObject {
             currentSession.addItem(item)
         }
         persistSession()
+    }
+
+    /// Called by the transcription service — appends new speech after existing text.
+    func updateTranscription(_ transcribedText: String) {
+        let prefix = textBeforeDictation ?? ""
+        if prefix.isEmpty {
+            updateText(transcribedText)
+        } else {
+            updateText(prefix + "\n" + transcribedText)
+        }
+    }
+
+    private func currentTextContent() -> String {
+        for item in currentSession.items {
+            if case .text(let content) = item { return content }
+        }
+        return ""
     }
 
     func save() {
