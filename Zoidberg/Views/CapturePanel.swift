@@ -5,6 +5,7 @@ struct CapturePanel: View {
     @State private var textInput = ""
     @State private var escapeHoldTimer: Timer?
     @State private var isHoldingEscape = false
+    var onToggleDictation: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,7 @@ struct CapturePanel: View {
         .onDrop(of: [.fileURL, .url], isTargeted: $appState.isDragOver) { providers in
             handleDrop(providers)
         }
+        .preferredColorScheme(.dark)
         .onAppear {
             textInput = currentTextContent()
         }
@@ -44,7 +46,7 @@ struct CapturePanel: View {
                         .foregroundColor(.red)
                 }
             } else {
-                Button(action: {}) {
+                Button(action: { onToggleDictation?() }) {
                     Image(systemName: "mic")
                         .foregroundColor(.gray)
                         .font(.system(size: 12))
@@ -83,6 +85,7 @@ struct CapturePanel: View {
                 }
                 TextEditor(text: $textInput)
                     .font(.system(size: 13))
+                    .foregroundColor(.white)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 60, maxHeight: 200)
                     .onChange(of: textInput) { _, newValue in

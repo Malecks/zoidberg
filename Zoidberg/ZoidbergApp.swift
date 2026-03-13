@@ -34,7 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.animates = true
         popover.contentViewController = NSHostingController(
-            rootView: CapturePanel(appState: appState)
+            rootView: CapturePanel(appState: appState, onToggleDictation: { [weak self] in
+                self?.toggleDictation()
+            })
         )
 
         transcriptionService.delegate = self
@@ -102,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try transcriptionService.startListening()
                     appState.isDictating = true
                 } catch {
+                    print("Dictation error: \(error)")
                     appState.isDictating = false
                 }
             }
@@ -143,6 +146,7 @@ extension AppDelegate: TranscriptionDelegate {
     }
 
     func transcriptionDidFail(error: Error) {
+        print("Transcription failed: \(error)")
         Task { @MainActor in
             appState.isDictating = false
         }

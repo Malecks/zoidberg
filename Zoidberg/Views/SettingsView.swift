@@ -40,6 +40,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 400, height: 300)
+        .preferredColorScheme(.light)
         .onChange(of: vaultPath) { _, newValue in
             AppSettings.vaultPath = newValue
         }
