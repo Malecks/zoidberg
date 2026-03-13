@@ -29,6 +29,12 @@ struct CapturePanel: View {
         .onAppear {
             textInput = currentTextContent()
         }
+        .onChange(of: appState.currentSession.items) { _, _ in
+            let latest = currentTextContent()
+            if latest != textInput {
+                textInput = latest
+            }
+        }
     }
 
     private var header: some View {
