@@ -14,13 +14,13 @@ struct ZoidbergApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var panel: NSPanel!
+    private var panel: KeyablePanel!
     private let appState = AppState()
     private let hotkeyManager = HotkeyManager()
     private let transcriptionService = MacOSDictationService()
     private let escapeMonitor = EscapeKeyMonitor()
 
-    private var isPanelVisible: Bool { panel.isVisible }
+    private var isPanelVisible: Bool { panel?.isVisible ?? false }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -38,22 +38,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 340, height: 120),
-            styleMask: [.nonactivatingPanel],
+            styleMask: [.nonactivatingPanel, .resizable],
             backing: .buffered,
             defer: true
         )
         panel.isOpaque = false
         panel.backgroundColor = NSColor(red: 0.06, green: 0.04, blue: 0.1, alpha: 1)
-        panel.hasShadow = false
+        panel.hasShadow = true
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.isMovableByWindowBackground = false
+        panel.isMovableByWindowBackground = true
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = false
         panel.appearance = NSAppearance(named: .darkAqua)
+        panel.minSize = NSSize(width: 280, height: 100)
+        panel.maxSize = NSSize(width: 600, height: 800)
         panel.contentViewController = hostingController
+        panel.setFrameAutosaveName("ZoidbergPanel")
 
-        // Round the entire window frame (includes the window background)
+        // Round the entire window frame
         if let frameView = panel.contentView?.superview {
             frameView.wantsLayer = true
             frameView.layer?.cornerRadius = 40
@@ -105,48 +108,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPanel() {
-        guard let button = statusItem.button,
-              let buttonWindow = button.window else { return }
+        if !panel.setFrameUsingName("ZoidbergPanel") {
+            guard let button = statusItem.button,
+                  let buttonWindow = button.window else { return }
+            let buttonRect = button.convert(button.bounds, to: nil)
+            let screenRect = buttonWindow.convertToScreen(buttonRect)
+            let panelWidth: CGFloat = 340
+            let panelX = screenRect.midX - panelWidth / 2
+            let panelY = screenRect.minY - 4
+            panel.setFrameTopLeftPoint(NSPoint(x: panelX, y: panelY))
+        }
 
-        let buttonRect = button.convert(button.bounds, to: nil)
-        let screenRect = buttonWindow.convertToScreen(buttonRect)
-
-        let panelWidth: CGFloat = 340
-        let panelX = screenRect.midX - panelWidth / 2
-        let panelY = screenRect.minY - 4
-
-        panel.setFrameTopLeftPoint(NSPoint(x: panelX, y: panelY))
-
-        // Animate in: fade + slide down
         panel.alphaValue = 0
-        let finalFrame = panel.frame
-        panel.setFrame(
-            NSRect(x: finalFrame.origin.x, y: finalFrame.origin.y + 6,
-                   width: finalFrame.width, height: finalFrame.height),
-            display: false
-        )
         panel.orderFrontRegardless()
         panel.makeKey()
+        appState.openCount += 1
 
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.2
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
             panel.animator().alphaValue = 1
-            panel.animator().setFrame(finalFrame, display: true)
         }
     }
 
     private func hidePanel() {
-        let frame = panel.frame
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
-            panel.animator().setFrame(
-                NSRect(x: frame.origin.x, y: frame.origin.y + 6,
-                       width: frame.width, height: frame.height),
-                display: true
-            )
         }, completionHandler: { [weak self] in
             self?.panel.orderOut(nil)
             self?.panel.alphaValue = 1

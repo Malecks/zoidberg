@@ -7,10 +7,9 @@ struct CapturePanel: View {
     @State private var isHoldingEscape = false
     @State private var micHover = false
     @State private var saveHover = false
+    @State private var borderRotation: Double = -0.5
+    @State private var borderOpacity: Double = 0
     var onToggleDictation: (() -> Void)?
-
-    private let cornerRadius: CGFloat = 40
-    private let bgColor = Color(nsColor: NSColor(red: 0.06, green: 0.04, blue: 0.1, alpha: 1))
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,16 +22,35 @@ struct CapturePanel: View {
         .frame(width: 340)
         .frame(minHeight: 80)
         .fixedSize(horizontal: false, vertical: true)
-        .background(bgColor)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .background(Color(nsColor: NSColor(red: 0.06, green: 0.04, blue: 0.1, alpha: 1)))
+        .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(
-                    appState.isDragOver
-                        ? Color.blue.opacity(0.8)
-                        : Color.white.opacity(0.08),
-                    lineWidth: appState.isDragOver ? 2 : 0.5
+            // Shimmering border: animated gradient background masked to the border shape
+            ZStack {
+                // Full gradient that moves
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.15),
+                        Color.white.opacity(0.03),
+                        Color.white.opacity(0.12),
+                        Color.white.opacity(0.03),
+                    ],
+                    startPoint: UnitPoint(x: borderRotation - 0.5, y: 0),
+                    endPoint: UnitPoint(x: borderRotation + 0.5, y: 1)
                 )
+            }
+            // Mask to only show the border ring
+            .mask(
+                RoundedRectangle(cornerRadius: 40, style: .continuous)
+                    .strokeBorder(lineWidth: 1.5)
+            )
+            .opacity(appState.isDragOver ? 0 : borderOpacity)
+        )
+        .overlay(
+            appState.isDragOver ?
+                RoundedRectangle(cornerRadius: 40, style: .continuous)
+                    .strokeBorder(Color.blue.opacity(0.8), lineWidth: 2)
+            : nil
         )
         .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
         .onDrop(of: [.fileURL, .url], isTargeted: $appState.isDragOver) { providers in
@@ -40,6 +58,25 @@ struct CapturePanel: View {
         }
         .onAppear {
             textInput = currentTextContent()
+        }
+        .onChange(of: appState.openCount) { _, _ in
+            // Reset and sweep the shimmer across the border
+            borderRotation = -0.5
+            borderOpacity = 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    borderOpacity = 1
+                }
+                withAnimation(.easeInOut(duration: 1.2)) {
+                    borderRotation = 1.5
+                }
+                // Settle to subtle
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    withAnimation(.easeOut(duration: 0.8)) {
+                        borderOpacity = 0.3
+                    }
+                }
+            }
         }
         .onChange(of: appState.currentSession.items) { _, _ in
             let latest = currentTextContent()

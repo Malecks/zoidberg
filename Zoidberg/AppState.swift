@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
     @Published var toastIsError = false
     @Published var lastDiscardedSession: CaptureSession?
     @Published var showUndoDiscard = false
+    @Published var openCount = 0
 
     /// Called when the panel should close (after save, discard, etc.)
     var onDismiss: (() -> Void)?
