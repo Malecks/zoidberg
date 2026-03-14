@@ -6,7 +6,6 @@ struct CapturePanel: View {
     @State private var escapeHoldTimer: Timer?
     @State private var isHoldingEscape = false
     @State private var micHover = false
-    @State private var saveHover = false
     @State private var borderRotation: Double = -0.5
     @State private var borderOpacity: Double = 0
     var onToggleDictation: (() -> Void)?
@@ -87,34 +86,34 @@ struct CapturePanel: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            Text("🤖")
-                .font(.system(size: 16))
+        HStack(spacing: 6) {
+            // Mic button — stays in place, changes color
+            Button(action: { onToggleDictation?() }) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(appState.isDictating ? .red : (micHover ? .white : .white.opacity(0.5)))
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(micHover && !appState.isDictating ? Color.white.opacity(0.12) : Color.clear)
+                    )
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { micHover = $0 }
+
+            // Waveform fades in when dictating
+            if appState.isDictating {
+                AudioWaveView(level: appState.audioLevel)
+                    .transition(.opacity)
+            }
 
             Spacer()
 
-            if appState.isDictating {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: .red.opacity(0.6), radius: 4)
-                    Text("Listening")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(.red)
-                }
-                .onTapGesture { onToggleDictation?() }
-            } else {
-                headerButton(icon: "mic.fill", isHovered: $micHover) {
-                    onToggleDictation?()
-                }
-            }
-
-            headerButton(icon: "checkmark", isHovered: $saveHover) {
-                appState.save()
-            }
-            .keyboardShortcut(.return, modifiers: .command)
+            Text("🤖")
+                .font(.system(size: 16))
         }
+        .animation(.easeInOut(duration: 0.2), value: appState.isDictating)
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
         .overlay(alignment: .top) {

@@ -218,4 +218,10 @@ extension AppDelegate: TranscriptionDelegate {
             appState.stopDictation()
         }
     }
+
+    nonisolated func transcriptionAudioLevel(_ level: Float) {
+        DispatchQueue.main.async { [weak self] in
+            self?.appState.audioLevel = level
+        }
+    }
 }

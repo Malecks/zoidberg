@@ -6,6 +6,7 @@ import Combine
 final class AppState: ObservableObject {
     @Published var currentSession = CaptureSession()
     @Published var isDictating = false
+    @Published var audioLevel: Float = 0
     /// Text that existed before the current dictation session started
     private var textBeforeDictation: String?
     @Published var isDragOver = false

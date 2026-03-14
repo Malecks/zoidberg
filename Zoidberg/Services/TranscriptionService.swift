@@ -6,6 +6,7 @@ protocol TranscriptionDelegate: AnyObject {
     func transcriptionDidUpdate(text: String)
     func transcriptionDidFinish(finalText: String)
     func transcriptionDidFail(error: Error)
+    func transcriptionAudioLevel(_ level: Float)
 }
 
 protocol TranscriptionProvider {
@@ -21,6 +22,7 @@ final class MacOSDictationService: NSObject, TranscriptionProvider {
     private let audioEngine = AVAudioEngine()
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
+    private var lastLevelTime: CFAbsoluteTime = 0
 
     private(set) var isListening = false
 
@@ -49,6 +51,25 @@ final class MacOSDictationService: NSObject, TranscriptionProvider {
 
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: recordingFormat) { [weak self] buffer, _ in
             self?.recognitionRequest?.append(buffer)
+
+            // Calculate RMS audio level, throttled to ~30fps
+            guard let self = self else { return }
+            let now = CFAbsoluteTimeGetCurrent()
+            guard now - self.lastLevelTime > 0.033 else { return }
+            self.lastLevelTime = now
+
+            guard let channelData = buffer.floatChannelData?[0] else { return }
+            let frameLength = Int(buffer.frameLength)
+            var sum: Float = 0
+            for i in 0..<frameLength {
+                sum += channelData[i] * channelData[i]
+            }
+            let rms = sqrt(sum / Float(frameLength))
+            // Gate out background noise, then scale with a curve for more range
+            let gated = rms < 0.006 ? Float(0) : rms
+            let scaled = sqrt(min(1.0, gated * 25)) // sqrt curve gives more midrange
+            let level = scaled
+            self.delegate?.transcriptionAudioLevel(level)
         }
 
         audioEngine.prepare()
