@@ -47,32 +47,36 @@ struct CapturePanel: View {
         .frame(minHeight: 80)
         .fixedSize(horizontal: false, vertical: true)
         .background(Color(nsColor: NSColor(red: 0.06, green: 0.04, blue: 0.1, alpha: 1)))
-        .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
+        // Shimmer border inside the panel, drawn against dark background
         .overlay(
-            // Shimmering border: animated gradient background masked to the border shape
             ZStack {
-                // Full gradient that moves
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.15),
-                        Color.white.opacity(0.03),
-                        Color.white.opacity(0.12),
-                        Color.white.opacity(0.03),
+                        Color.purple.opacity(0.4),
+                        Color.purple.opacity(0.05),
+                        Color.blue.opacity(0.3),
+                        Color.purple.opacity(0.05),
                     ],
                     startPoint: UnitPoint(x: borderRotation - 0.5, y: 0),
                     endPoint: UnitPoint(x: borderRotation + 0.5, y: 1)
                 )
             }
-            // Mask to only show the border ring
             .mask(
                 RoundedRectangle(cornerRadius: 40, style: .continuous)
                     .strokeBorder(lineWidth: 1.5)
             )
             .opacity(appState.isDragOver ? 0 : borderOpacity)
         )
+        .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
+        // Dark outer border to sandwich the shimmer against a dark background
+        .padding(1.5)
+        .background(
+            RoundedRectangle(cornerRadius: 41.5, style: .continuous)
+                .fill(Color(nsColor: NSColor(red: 0.06, green: 0.04, blue: 0.1, alpha: 1)))
+        )
         .overlay(
             appState.isDragOver ?
-                RoundedRectangle(cornerRadius: 40, style: .continuous)
+                RoundedRectangle(cornerRadius: 41.5, style: .continuous)
                     .strokeBorder(Color.blue.opacity(0.8), lineWidth: 2)
             : nil
         )
@@ -80,6 +84,11 @@ struct CapturePanel: View {
         .onDrop(of: [.fileURL, .url], isTargeted: $appState.isDragOver) { providers in
             handleDrop(providers)
         }
+        .background(
+            Button("") { appState.save() }
+                .keyboardShortcut(.return, modifiers: .command)
+                .hidden()
+        )
         .onAppear {
             textInput = currentTextContent()
         }
@@ -91,17 +100,20 @@ struct CapturePanel: View {
             }
         }
         .onChange(of: appState.openCount) { _, _ in
-            // Reset and sweep the shimmer across the border
-            borderRotation = -0.5
-            borderOpacity = 0
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Reset without animation, then sweep on next frame
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                borderRotation = -0.5
+                borderOpacity = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 withAnimation(.easeOut(duration: 0.3)) {
                     borderOpacity = 1
                 }
                 withAnimation(.easeInOut(duration: 1.2)) {
                     borderRotation = 1.5
                 }
-                // Settle to subtle
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     withAnimation(.easeOut(duration: 0.8)) {
                         borderOpacity = 0.3

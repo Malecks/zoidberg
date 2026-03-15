@@ -10,7 +10,7 @@ final class HotkeyManager {
     var onToggleDictation: (() -> Void)?
 
     func register() {
-        togglePanelHotKey = HotKey(key: .space, modifiers: [.control])
+        togglePanelHotKey = HotKey(key: .space, modifiers: .control)
         togglePanelHotKey?.keyDownHandler = { [weak self] in
             self?.onTogglePanel?()
         }

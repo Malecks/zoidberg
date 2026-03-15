@@ -66,7 +66,7 @@ final class MacOSDictationService: NSObject, TranscriptionProvider {
             }
             let rms = sqrt(sum / Float(frameLength))
             // Gate out background noise, then scale with a curve for more range
-            let gated = rms < 0.006 ? Float(0) : rms
+            let gated = rms < 0.0015 ? Float(0) : rms
             let scaled = sqrt(min(1.0, gated * 25)) // sqrt curve gives more midrange
             let level = scaled
             self.delegate?.transcriptionAudioLevel(level)

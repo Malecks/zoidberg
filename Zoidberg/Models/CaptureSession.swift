@@ -35,8 +35,10 @@ struct CaptureSession: Codable {
         var lines: [String] = []
         lines.append("# \(heading)")
         lines.append("")
-        lines.append("Notes captured on \(dateString)")
-        lines.append("")
+        if title != nil {
+            lines.append("Notes captured on \(dateString)")
+            lines.append("")
+        }
         lines.append("---")
         lines.append("")
 
@@ -50,7 +52,7 @@ struct CaptureSession: Codable {
 
     func fallbackFilename() -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
+        formatter.dateFormat = "yyyy-MM-dd-HHmm"
         return "\(formatter.string(from: createdAt))-capture.md"
     }
 }
