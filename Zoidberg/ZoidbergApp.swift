@@ -68,6 +68,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appState.onDismiss = { [weak self] in
             self?.hidePanel()
         }
+        appState.onStopDictation = { [weak self] in
+            guard let self = self, self.transcriptionService.isListening else { return }
+            self.transcriptionService.stopListening()
+            self.appState.stopDictation()
+        }
 
         // Add Edit menu so copy/paste/cut work in text fields
         let mainMenu = NSMenu()
@@ -99,7 +104,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         escapeMonitor.onHold = { [weak self] in
             guard let self = self else { return }
             Task { @MainActor in
+                self.appState.isDiscardHolding = false
                 self.appState.discardSession()
+            }
+        }
+        escapeMonitor.onHoldStart = { [weak self] in
+            Task { @MainActor in
+                self?.appState.isDiscardHolding = true
+            }
+        }
+        escapeMonitor.onHoldCancel = { [weak self] in
+            Task { @MainActor in
+                self?.appState.isDiscardHolding = false
             }
         }
         escapeMonitor.start()
@@ -145,6 +161,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func hidePanel() {
+        if transcriptionService.isListening {
+            transcriptionService.stopListening()
+            appState.stopDictation()
+        }
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)

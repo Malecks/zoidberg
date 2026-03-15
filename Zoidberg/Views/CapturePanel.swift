@@ -175,6 +175,9 @@ struct CapturePanel: View {
     }
 
     private var statusText: String? {
+        if appState.isDiscardHolding {
+            return "hold ⎋ to discard"
+        }
         if appState.isDragOver {
             return "drop here"
         }
@@ -191,6 +194,7 @@ struct CapturePanel: View {
     }
 
     private var statusColor: Color {
+        if appState.isDiscardHolding { return .red }
         if appState.isDragOver { return .blue }
         if appState.toastMessage != nil { return appState.toastIsError ? .red : .green }
         if appState.isDictating { return .red }
@@ -217,15 +221,6 @@ struct CapturePanel: View {
 
     private var textArea: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if appState.showUndoDiscard {
-                Button("Undo discard") {
-                    appState.undoDiscard()
-                    textInput = currentTextContent()
-                }
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundColor(.blue)
-                .padding(.bottom, 4)
-            }
             TextEditor(text: $textInput)
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundColor(.white.opacity(0.9))

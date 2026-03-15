@@ -12,14 +12,15 @@ final class AppState: ObservableObject {
     @Published var isDragOver = false
     @Published var toastMessage: String?
     @Published var toastIsError = false
-    @Published var lastDiscardedSession: CaptureSession?
-    @Published var showUndoDiscard = false
     @Published var openCount = 0
     @Published var isIdle = false
     @Published var isAutoClosing = false
+    @Published var isDiscardHolding = false
 
     /// Called when the panel should close (after save, discard, etc.)
     var onDismiss: (() -> Void)?
+    /// Called to stop any active dictation
+    var onStopDictation: (() -> Void)?
     @Published var settingsRequested = false
 
     private var idleTimer: Timer?
@@ -28,7 +29,6 @@ final class AppState: ObservableObject {
     private let hintDuration: TimeInterval = 2.5
     private var autoCloseDelay: TimeInterval { AppSettings.autoCloseSeconds }
 
-    private var discardTimer: Timer?
     private var toastTimer: Timer?
 
     private let persistencePath: String = {
@@ -142,6 +142,8 @@ final class AppState: ObservableObject {
     }
 
     func save() {
+        onStopDictation?()
+
         let vaultPath = AppSettings.vaultPath
         let writer = VaultWriter(vaultPath: vaultPath)
 
@@ -188,28 +190,9 @@ final class AppState: ObservableObject {
     }
 
     func discardSession() {
-        lastDiscardedSession = currentSession
-        showUndoDiscard = true
+        onStopDictation?()
         clearSession()
         deletePersistence()
-        onDismiss?()
-
-        discardTimer?.invalidate()
-        discardTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.lastDiscardedSession = nil
-                self?.showUndoDiscard = false
-            }
-        }
-    }
-
-    func undoDiscard() {
-        guard let session = lastDiscardedSession else { return }
-        currentSession = session
-        lastDiscardedSession = nil
-        showUndoDiscard = false
-        discardTimer?.invalidate()
-        persistSession()
     }
 
     private func showToast(_ message: String, isError: Bool) {
@@ -243,6 +226,7 @@ final class AppState: ObservableObject {
 
     private func clearSession() {
         currentSession = CaptureSession()
+        textBeforeDictation = nil
         deletePersistence()
     }
 
