@@ -5,16 +5,16 @@ struct ZoidbergApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings {
-            SettingsView()
-        }
+        // Settings window is managed manually via AppDelegate
+        Settings { EmptyView() }
     }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private var panel: KeyablePanel!
+    private var settingsWindow: NSWindow?
     let appState = AppState()
     private let hotkeyManager = HotkeyManager()
     private let transcriptionService = MacOSDictationService()
@@ -68,6 +68,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appState.onDismiss = { [weak self] in
             self?.hidePanel()
         }
+
+        // Add Edit menu so copy/paste/cut work in text fields
+        let mainMenu = NSMenu()
+        let editMenuItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+        NSApp.mainMenu = mainMenu
 
         if Permissions.checkAccessibility() == .denied {
             Permissions.requestAccessibility()
@@ -184,8 +196,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
+        if let settingsWindow = settingsWindow {
+            settingsWindow.makeKeyAndOrderFront(nil)
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentViewController: NSHostingController(rootView: SettingsView())
+        )
+        window.title = "Zoidberg Settings"
+        window.styleMask = [.titled, .closable]
+        window.setContentSize(NSSize(width: 400, height: 300))
+        window.center()
+        window.delegate = self
+        settingsWindow = window
+
+        NSApp.setActivationPolicy(.regular)
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        appState.settingsRequested = true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        if (notification.object as? NSWindow) === settingsWindow {
+            settingsWindow = nil
+            // Hide dock icon again
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     @objc private func quit() {

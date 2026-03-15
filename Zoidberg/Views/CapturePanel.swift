@@ -8,12 +8,12 @@ struct CapturePanel: View {
     @State private var micHover = false
     @State private var borderRotation: Double = -0.5
     @State private var borderOpacity: Double = 0
-    @Environment(\.openSettings) private var openSettings
     var onToggleDictation: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
             textArea
+                .frame(minHeight: 40)
             // Attachments + footer with drop zone overlay
             VStack(spacing: 0) {
                 attachmentsArea
@@ -113,12 +113,6 @@ struct CapturePanel: View {
             let latest = currentTextContent()
             if latest != textInput {
                 textInput = latest
-            }
-        }
-        .onChange(of: appState.settingsRequested) { _, requested in
-            if requested {
-                openSettings()
-                appState.settingsRequested = false
             }
         }
     }
