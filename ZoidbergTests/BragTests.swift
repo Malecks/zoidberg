@@ -73,3 +73,116 @@ final class CommandRunnerTests: XCTestCase {
         XCTAssertFalse(r.stderr.isEmpty)
     }
 }
+final class FakeRunner: CommandRunner {
+    var calls: [[String]] = []
+    var result = CommandResult(exitCode: 0, stdout: "wrote /v/Brag/2026-W42.md\n", stderr: "")
+    var onRun: (() async -> Void)?
+    func run(_ executable: String, _ args: [String]) async -> CommandResult {
+        calls.append(args)
+        await onRun?()
+        return result
+    }
+}
+
+final class FakePoster: NotificationPosting {
+    var granted = true
+    var posted: [(title: String, category: String, after: TimeInterval?, userInfo: [AnyHashable: Any])] = []
+    func post(_ content: UNNotificationContent, after seconds: TimeInterval?) async -> Bool {
+        guard granted else { return false }
+        posted.append((content.title, content.categoryIdentifier, seconds, content.userInfo))
+        return true
+    }
+}
+
+@MainActor
+final class BragControllerTests: XCTestCase {
+    var runner: FakeRunner!
+    var poster: FakePoster!
+    var fallback: FallbackChoice = .skip
+    var alerts: [Int] = []
+    var messages: [String] = []
+    var opened: [URL] = []
+    var scheduled: [TimeInterval] = []
+    var exists = true
+
+    override func setUp() async throws {
+        AppSettings.defaults = UserDefaults(suiteName: "com.zoidberg.tests.brag")!
+        AppSettings.defaults.removePersistentDomain(forName: "com.zoidberg.tests.brag")
+        runner = FakeRunner(); poster = FakePoster()
+        alerts = []; messages = []; opened = []; scheduled = []; fallback = .skip; exists = true
+    }
+
+    func make() -> BragController {
+        BragController(runner: runner, notifications: poster, fileExists: { [unowned self] _ in self.exists },
+                       fallbackAlert: { [unowned self] days in self.alerts.append(days); return self.fallback },
+                       showMessage: { [unowned self] title, _ in self.messages.append(title) },
+                       openURL: { [unowned self] url in self.opened.append(url) },
+                       scheduleLater: { [unowned self] seconds, _ in self.scheduled.append(seconds) })
+    }
+
+    func testNudgePostsReviewNotification() async {
+        await make().handle(.nudge(days: 2))
+        XCTAssertEqual(poster.posted.map(\.title), ["Brag review"])
+        XCTAssertNil(poster.posted[0].after)
+    }
+
+    func testReviewNowRunsBragReviewInTerminal() async {
+        await make().didReceive(action: BragIDs.reviewAction, category: BragIDs.reviewCategory, userInfo: ["days": 2])
+        await make().didReceive(action: UNNotificationDefaultActionIdentifier, category: BragIDs.reviewCategory, userInfo: [:])
+        XCTAssertEqual(runner.calls, [["review", "--in-terminal"], ["review", "--in-terminal"]])
+    }
+
+    func testLaterFromDeliveredNotificationKeepsDays() async {
+        await make().didReceive(action: BragIDs.laterAction, category: BragIDs.reviewCategory, userInfo: ["days": 4])
+        XCTAssertEqual(poster.posted.count, 1)
+        XCTAssertEqual(poster.posted[0].after, 3600)
+        XCTAssertEqual(poster.posted[0].userInfo["days"] as? Int, 4)
+        XCTAssertTrue(runner.calls.isEmpty)
+    }
+
+    func testNudgeFallsBackWhenNotificationsDenied() async {
+        poster.granted = false; fallback = .reviewNow
+        await make().handle(.nudge(days: 3))
+        XCTAssertEqual(alerts, [3])
+        XCTAssertEqual(runner.calls, [["review", "--in-terminal"]])
+    }
+
+    func testFallbackLaterReschedulesWithoutNotifications() async {
+        poster.granted = false; fallback = .later
+        AppSettings.bragLaterSeconds = 60
+        await make().handle(.nudge(days: 1))
+        XCTAssertEqual(scheduled, [60])
+    }
+
+    func testUpdateNowPostsResultAndResultClickOpensNote() async {
+        let c = make()
+        await c.updateNow()
+        XCTAssertEqual(runner.calls, [["gather"]])
+        XCTAssertEqual(poster.posted.map(\.title), ["Brag notes updated"])
+        await c.didReceive(action: UNNotificationDefaultActionIdentifier, category: BragIDs.resultCategory,
+                           userInfo: poster.posted[0].userInfo)
+        XCTAssertEqual(opened.map(\.absoluteString), ["obsidian://open?path=/v/Brag/2026-W42.md"])
+        XCTAssertFalse(c.isUpdating)
+    }
+
+    func testUpdateNowIgnoredWhileRunning() async {
+        let c = make()
+        runner.onRun = { [unowned c] in await c.updateNow() }   // re-entrant click while running
+        await c.updateNow()
+        XCTAssertEqual(runner.calls.count, 1)
+    }
+
+    func testMissingBragPostsNotFound() async {
+        exists = false
+        await make().updateNow()
+        await make().reviewNow()
+        XCTAssertTrue(runner.calls.isEmpty)
+        XCTAssertEqual(poster.posted.map(\.title), ["brag CLI not found", "brag CLI not found"])
+    }
+
+    func testResultFallsBackToMessageWhenDenied() async {
+        poster.granted = false
+        await make().updateNow()
+        XCTAssertEqual(messages, ["Brag notes updated"])
+    }
+}

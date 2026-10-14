@@ -76,3 +76,34 @@ enum BragContent {
         return c
     }
 }
+
+protocol NotificationPosting {
+    func post(_ content: UNNotificationContent, after seconds: TimeInterval?) async -> Bool
+}
+
+final class SystemNotificationPoster: NotificationPosting {
+    private var center: UNUserNotificationCenter { .current() }
+
+    func registerCategories() {
+        let review = UNNotificationCategory(
+            identifier: BragIDs.reviewCategory,
+            actions: [UNNotificationAction(identifier: BragIDs.reviewAction, title: "Review now", options: []),
+                      UNNotificationAction(identifier: BragIDs.laterAction, title: "Later", options: [])],
+            intentIdentifiers: [])
+        let result = UNNotificationCategory(identifier: BragIDs.resultCategory, actions: [], intentIdentifiers: [])
+        center.setNotificationCategories([review, result])
+    }
+
+    func post(_ content: UNNotificationContent, after seconds: TimeInterval?) async -> Bool {
+        let granted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        guard granted else { return false }
+        let trigger = seconds.map { UNTimeIntervalNotificationTrigger(timeInterval: max(1, $0), repeats: false) }
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+        do {
+            try await center.add(request)
+            return true
+        } catch {
+            return false
+        }
+    }
+}
