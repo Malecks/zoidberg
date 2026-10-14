@@ -36,4 +36,14 @@ final class SettingsTests: XCTestCase {
     func testLaunchAtLoginDefaultsFalse() {
         XCTAssertFalse(AppSettings.launchAtLogin)
     }
+
+    func testBragPathDefault() {
+        XCTAssertEqual(AppSettings.bragPath, NSHomeDirectory() + "/.local/bin/brag")
+    }
+
+    func testBragLaterSecondsDefaultAndOverride() {
+        XCTAssertEqual(AppSettings.bragLaterSeconds, 3600)
+        AppSettings.defaults.set(60.0, forKey: "bragLaterSeconds")
+        XCTAssertEqual(AppSettings.bragLaterSeconds, 60)
+    }
 }

@@ -46,4 +46,14 @@ enum AppSettings {
         }
         set { defaults.set(newValue, forKey: "autoCloseSeconds") }
     }
+
+    static var bragPath: String {
+        get { defaults.string(forKey: "bragPath") ?? NSHomeDirectory() + "/.local/bin/brag" }
+        set { defaults.set(newValue, forKey: "bragPath") }
+    }
+
+    static var bragLaterSeconds: Double {
+        get { (defaults.object(forKey: "bragLaterSeconds") as? Double) ?? 3600 }
+        set { defaults.set(newValue, forKey: "bragLaterSeconds") }
+    }
 }

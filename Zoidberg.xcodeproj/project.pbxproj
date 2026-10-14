@@ -24,6 +24,11 @@
 		A10015 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10015 /* Settings.swift */; };
 		A10016 /* EscapeKeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10016 /* EscapeKeyMonitor.swift */; };
 		A10020 /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = D10001 /* HotKey */; };
+		A10030 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10030 /* CommandRunner.swift */; };
+		A10031 /* BragURLRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10031 /* BragURLRouter.swift */; };
+		A10032 /* BragNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10032 /* BragNotifications.swift */; };
+		A10033 /* BragController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10033 /* BragController.swift */; };
+		A10034 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10034 /* LoginItem.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +50,11 @@
 		B10016 /* EscapeKeyMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscapeKeyMonitor.swift; sourceTree = "<group>"; };
 		B10017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10099 /* Zoidberg.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zoidberg.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10030 /* CommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRunner.swift; sourceTree = "<group>"; };
+		B10031 /* BragURLRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BragURLRouter.swift; sourceTree = "<group>"; };
+		B10032 /* BragNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BragNotifications.swift; sourceTree = "<group>"; };
+		B10033 /* BragController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BragController.swift; sourceTree = "<group>"; };
+		B10034 /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +110,10 @@
 				B10009 /* ClaudeService.swift */,
 				B10010 /* VaultWriter.swift */,
 				B10011 /* HotkeyManager.swift */,
+				B10033 /* BragController.swift */,
+				B10032 /* BragNotifications.swift */,
+				B10031 /* BragURLRouter.swift */,
+				B10030 /* CommandRunner.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -119,6 +133,7 @@
 				B10014 /* Permissions.swift */,
 				B10015 /* Settings.swift */,
 				B10016 /* EscapeKeyMonitor.swift */,
+				B10034 /* LoginItem.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -205,6 +220,11 @@
 				A10014 /* Permissions.swift in Sources */,
 				A10015 /* Settings.swift in Sources */,
 				A10016 /* EscapeKeyMonitor.swift in Sources */,
+				A10034 /* LoginItem.swift in Sources */,
+				A10033 /* BragController.swift in Sources */,
+				A10032 /* BragNotifications.swift in Sources */,
+				A10031 /* BragURLRouter.swift in Sources */,
+				A10030 /* CommandRunner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

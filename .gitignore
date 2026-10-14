@@ -5,3 +5,4 @@ DerivedData/
 .DS_Store
 .superpowers/
 Zoidberg.xcodeproj/project.xcworkspace/
+build/
