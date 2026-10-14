@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct ZoidbergApp: App {
@@ -19,10 +20,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let hotkeyManager = HotkeyManager()
     private let transcriptionService = MacOSDictationService()
     private let escapeMonitor = EscapeKeyMonitor()
+    private let bragPoster = SystemNotificationPoster()
+    private lazy var brag = BragController(
+        runner: ProcessCommandRunner(),
+        notifications: bragPoster,
+        fallbackAlert: { days in
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "Brag review"
+            alert.informativeText = days == 1 ? "1 day captured since your last review" : "\(days) days captured since your last review"
+            alert.addButton(withTitle: "Review now")
+            alert.addButton(withTitle: "Later")
+            alert.addButton(withTitle: "Skip")
+            switch alert.runModal() {
+            case .alertFirstButtonReturn: return .reviewNow
+            case .alertSecondButtonReturn: return .later
+            default: return .skip
+            }
+        },
+        showMessage: { title, body in
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = title
+            alert.informativeText = body
+            alert.runModal()
+        },
+        openURL: { NSWorkspace.shared.open($0) },
+        scheduleLater: { seconds, work in DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work) })
 
     private var isPanelVisible: Bool { panel?.isVisible ?? false }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+        bragPoster.registerCategories()
+        if AppSettings.launchAtLogin { LoginItem.set(true) }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "cpu", accessibilityDescription: "Zoidberg")
@@ -208,12 +239,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func showContextMenu() {
         let menu = NSMenu()
+        let update = NSMenuItem(title: BragMenu.updateTitle(isUpdating: brag.isUpdating),
+                                action: brag.isUpdating ? nil : #selector(bragUpdateNow), keyEquivalent: "")
+        update.target = self
+        menu.addItem(update)
+        let review = NSMenuItem(title: "Brag: Review…", action: #selector(bragReview), keyEquivalent: "")
+        review.target = self
+        menu.addItem(review)
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Zoidberg", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
+    }
+
+    @objc private func bragUpdateNow() { Task { await brag.updateNow() } }
+    @objc private func bragReview() { Task { await brag.reviewNow() } }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let route = BragURLRouter.route(url) else { continue }
+            Task { await brag.handle(route) }
+        }
     }
 
     @objc private func openSettings() {
@@ -282,6 +331,26 @@ extension AppDelegate: TranscriptionDelegate {
     nonisolated func transcriptionAudioLevel(_ level: Float) {
         DispatchQueue.main.async { [weak self] in
             self?.appState.audioLevel = level
+        }
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let action = response.actionIdentifier
+        let category = response.notification.request.content.categoryIdentifier
+        let info = response.notification.request.content.userInfo
+        Task { @MainActor in
+            await self.brag.didReceive(action: action, category: category, userInfo: info)
+            completionHandler()
         }
     }
 }

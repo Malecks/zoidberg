@@ -93,6 +93,7 @@ struct SettingsView: View {
         }
         .onChange(of: launchAtLogin) { _, newValue in
             AppSettings.launchAtLogin = newValue
+            LoginItem.set(newValue)
         }
         .onChange(of: autoCloseEnabled) { _, newValue in
             AppSettings.autoCloseEnabled = newValue

@@ -8,5 +8,16 @@
     <string>Zoidberg needs microphone access to transcribe your voice notes.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Zoidberg uses speech recognition to transcribe your dictated notes.</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.malecks.zoidberg.brag</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>zoidberg</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

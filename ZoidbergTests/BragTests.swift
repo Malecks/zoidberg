@@ -186,3 +186,28 @@ final class BragControllerTests: XCTestCase {
         XCTAssertEqual(messages, ["Brag notes updated"])
     }
 }
+final class FakeLoginService: LoginItemService {
+    var registered: Bool? = nil
+    var fail = false
+    func register() throws { if fail { throw NSError(domain: "t", code: 1) }; registered = true }
+    func unregister() throws { if fail { throw NSError(domain: "t", code: 1) }; registered = false }
+}
+
+final class LoginItemTests: XCTestCase {
+    func testSetRegistersAndUnregisters() {
+        let s = FakeLoginService()
+        XCTAssertTrue(LoginItem.set(true, service: s)); XCTAssertEqual(s.registered, true)
+        XCTAssertTrue(LoginItem.set(false, service: s)); XCTAssertEqual(s.registered, false)
+    }
+    func testFailureReported() {
+        let s = FakeLoginService(); s.fail = true
+        XCTAssertFalse(LoginItem.set(true, service: s))
+    }
+}
+
+final class BragMenuTests: XCTestCase {
+    func testUpdateTitle() {
+        XCTAssertEqual(BragMenu.updateTitle(isUpdating: false), "Brag: Update now")
+        XCTAssertEqual(BragMenu.updateTitle(isUpdating: true), "Brag: Updating…")
+    }
+}
