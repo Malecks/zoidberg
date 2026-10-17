@@ -16,10 +16,6 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSUIElement</key>
     <true/>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Zoidberg needs microphone access to transcribe your voice notes.</string>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Zoidberg uses speech recognition to transcribe your dictated notes.</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

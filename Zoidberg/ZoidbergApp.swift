@@ -18,7 +18,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
     let appState = AppState()
     private let hotkeyManager = HotkeyManager()
-    private let transcriptionService = MacOSDictationService()
     private let escapeMonitor = EscapeKeyMonitor()
     private let bragPoster = SystemNotificationPoster()
     private lazy var brag = BragController(
@@ -49,6 +48,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         scheduleLater: { seconds, work in DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work) })
 
     private var isPanelVisible: Bool { panel?.isVisible ?? false }
+    /// App that was frontmost before the panel opened; focus goes back to it on hide.
+    private var previousApp: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
@@ -62,9 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         let hostingController = NSHostingController(
-            rootView: CapturePanel(appState: appState, onToggleDictation: { [weak self] in
-                self?.toggleDictation()
-            })
+            rootView: CapturePanel(appState: appState)
         )
 
         panel = KeyablePanel(
@@ -95,27 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             frameView.layer?.masksToBounds = true
         }
 
-        transcriptionService.delegate = self
         appState.onDismiss = { [weak self] in
             self?.hidePanel()
         }
-        appState.onStopDictation = { [weak self] in
-            guard let self = self, self.transcriptionService.isListening else { return }
-            self.transcriptionService.stopListening()
-            self.appState.stopDictation()
-        }
-
-        // Add Edit menu so copy/paste/cut work in text fields
-        let mainMenu = NSMenu()
-        let editMenuItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
-        let editMenu = NSMenu(title: "Edit")
-        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
-        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
-        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
-        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
-        editMenuItem.submenu = editMenu
-        mainMenu.addItem(editMenuItem)
-        NSApp.mainMenu = mainMenu
 
         if Permissions.checkAccessibility() == .denied {
             Permissions.requestAccessibility()
@@ -123,9 +104,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         hotkeyManager.onTogglePanel = { [weak self] in
             self?.togglePanel()
-        }
-        hotkeyManager.onToggleDictation = { [weak self] in
-            self?.toggleDictation()
         }
         hotkeyManager.register()
 
@@ -179,6 +157,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             panel.setFrameTopLeftPoint(NSPoint(x: panelX, y: panelY))
         }
 
+        // Become the active app so Wispr Flow dictates into our text field, not the app behind
+        if let front = NSWorkspace.shared.frontmostApplication, front != NSRunningApplication.current {
+            previousApp = front
+        }
+        NSApp.activate(ignoringOtherApps: true)
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         panel.makeKey()
@@ -193,48 +176,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func hidePanel() {
-        if transcriptionService.isListening {
-            transcriptionService.stopListening()
-            appState.stopDictation()
-        }
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
-            self?.panel.orderOut(nil)
-            self?.panel.alphaValue = 1
+            guard let self = self else { return }
+            self.panel.orderOut(nil)
+            self.panel.alphaValue = 1
+            if NSApp.isActive { self.previousApp?.activate() }
+            self.previousApp = nil
         })
-    }
-
-    private func toggleDictation() {
-        if !isPanelVisible {
-            showPanel()
-        }
-
-        if transcriptionService.isListening {
-            transcriptionService.stopListening()
-            Task { @MainActor in
-                appState.stopDictation()
-            }
-        } else {
-            Task { @MainActor in
-                if Permissions.checkSpeechRecognition() == .notDetermined {
-                    let _ = await Permissions.requestSpeechRecognition()
-                }
-                guard Permissions.checkSpeechRecognition() == .granted else {
-                    Permissions.openSystemSettings(for: "Privacy_SpeechRecognition")
-                    return
-                }
-                do {
-                    try transcriptionService.startListening()
-                    appState.startDictation()
-                } catch {
-                    print("Dictation error: \(error)")
-                    appState.stopDictation()
-                }
-            }
-        }
     }
 
     private func showContextMenu() {
@@ -305,33 +257,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
-}
 
-extension AppDelegate: TranscriptionDelegate {
-    func transcriptionDidUpdate(text: String) {
-        Task { @MainActor in
-            appState.updateTranscription(text)
-        }
-    }
+    // SwiftUI replaces NSApp.mainMenu with a default that has no Edit menu, so editing
+    // shortcuts (and Wispr Flow's synthetic ⌘V) would never reach the text view
+    private static let editActions: [String: Selector] = [
+        "x": #selector(NSText.cut(_:)),
+        "c": #selector(NSText.copy(_:)),
+        "v": #selector(NSText.paste(_:)),
+        "a": #selector(NSText.selectAll(_:)),
+    ]
 
-    func transcriptionDidFinish(finalText: String) {
-        Task { @MainActor in
-            appState.updateTranscription(finalText)
-            appState.stopDictation()
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command,
+           let action = Self.editActions[event.charactersIgnoringModifiers ?? ""],
+           NSApp.sendAction(action, to: nil, from: self) {
+            return true
         }
-    }
-
-    func transcriptionDidFail(error: Error) {
-        print("Transcription failed: \(error)")
-        Task { @MainActor in
-            appState.stopDictation()
-        }
-    }
-
-    nonisolated func transcriptionAudioLevel(_ level: Float) {
-        DispatchQueue.main.async { [weak self] in
-            self?.appState.audioLevel = level
-        }
+        return super.performKeyEquivalent(with: event)
     }
 }
 

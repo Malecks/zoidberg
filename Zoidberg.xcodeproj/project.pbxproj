@@ -13,8 +13,6 @@
 		A10004 /* CaptureItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10004 /* CaptureItemRow.swift */; };
 		A10005 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10005 /* SettingsView.swift */; };
 		A10006 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10006 /* ToastView.swift */; };
-		A10007 /* AudioWaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10007 /* AudioWaveView.swift */; };
-		A10008 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10008 /* TranscriptionService.swift */; };
 		A10009 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10009 /* ClaudeService.swift */; };
 		A10010 /* VaultWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10010 /* VaultWriter.swift */; };
 		A10011 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10011 /* HotkeyManager.swift */; };
@@ -38,8 +36,6 @@
 		B10004 /* CaptureItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureItemRow.swift; sourceTree = "<group>"; };
 		B10005 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B10006 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
-		B10007 /* AudioWaveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioWaveView.swift; sourceTree = "<group>"; };
-		B10008 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		B10009 /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
 		B10010 /* VaultWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultWriter.swift; sourceTree = "<group>"; };
 		B10011 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
@@ -98,7 +94,6 @@
 				B10004 /* CaptureItemRow.swift */,
 				B10005 /* SettingsView.swift */,
 				B10006 /* ToastView.swift */,
-				B10007 /* AudioWaveView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -106,7 +101,6 @@
 		E10004 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				B10008 /* TranscriptionService.swift */,
 				B10009 /* ClaudeService.swift */,
 				B10010 /* VaultWriter.swift */,
 				B10011 /* HotkeyManager.swift */,
@@ -210,8 +204,6 @@
 				A10004 /* CaptureItemRow.swift in Sources */,
 				A10005 /* SettingsView.swift in Sources */,
 				A10006 /* ToastView.swift in Sources */,
-				A10007 /* AudioWaveView.swift in Sources */,
-				A10008 /* TranscriptionService.swift in Sources */,
 				A10009 /* ClaudeService.swift in Sources */,
 				A10010 /* VaultWriter.swift in Sources */,
 				A10011 /* HotkeyManager.swift in Sources */,

@@ -5,10 +5,6 @@ import Combine
 @MainActor
 final class AppState: ObservableObject {
     @Published var currentSession = CaptureSession()
-    @Published var isDictating = false
-    @Published var audioLevel: Float = 0
-    /// Text that existed before the current dictation session started
-    private var textBeforeDictation: String?
     @Published var isDragOver = false
     @Published var toastMessage: String?
     @Published var toastIsError = false
@@ -20,8 +16,6 @@ final class AppState: ObservableObject {
 
     /// Called when the panel should close (after save, discard, etc.)
     var onDismiss: (() -> Void)?
-    /// Called to stop any active dictation
-    var onStopDictation: (() -> Void)?
     @Published var settingsRequested = false
 
     private var idleTimer: Timer?
@@ -82,19 +76,6 @@ final class AppState: ObservableObject {
         isIdle = false
     }
 
-    func startDictation() {
-        textBeforeDictation = currentTextContent()
-        isDictating = true
-        idleTimer?.invalidate()
-        autoCloseTimer?.invalidate()
-        isIdle = false
-    }
-
-    func stopDictation() {
-        isDictating = false
-        resetIdle(showHint: true)
-    }
-
     func addItem(_ item: CaptureItem) {
         currentSession.addItem(item)
         persistSession()
@@ -106,7 +87,7 @@ final class AppState: ObservableObject {
         persistSession()
     }
 
-    /// Called with transcription text during dictation, or with user edits.
+    /// Called with user edits (typed, pasted or dictated by Wispr Flow).
     func updateText(_ text: String) {
         var items = currentSession.items.filter {
             if case .text = $0 { return false }
@@ -120,19 +101,7 @@ final class AppState: ObservableObject {
             currentSession.addItem(item)
         }
         persistSession()
-        if !isDictating {
-            resetIdle(showHint: true)
-        }
-    }
-
-    /// Called by the transcription service — appends new speech after existing text.
-    func updateTranscription(_ transcribedText: String) {
-        let prefix = textBeforeDictation ?? ""
-        if prefix.isEmpty {
-            updateText(transcribedText)
-        } else {
-            updateText(prefix + "\n" + transcribedText)
-        }
+        resetIdle(showHint: true)
     }
 
     private func currentTextContent() -> String {
@@ -168,8 +137,6 @@ final class AppState: ObservableObject {
     }
 
     func save() {
-        onStopDictation?()
-
         let vaultPath = AppSettings.vaultPath
         let writer = VaultWriter(vaultPath: vaultPath)
 
@@ -186,7 +153,6 @@ final class AppState: ObservableObject {
     }
 
     func discardSession() {
-        onStopDictation?()
         clearSession()
         deletePersistence()
     }
@@ -222,7 +188,6 @@ final class AppState: ObservableObject {
 
     private func clearSession() {
         currentSession = CaptureSession()
-        textBeforeDictation = nil
         deletePersistence()
     }
 

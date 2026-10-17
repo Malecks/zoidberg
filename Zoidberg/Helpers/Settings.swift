@@ -29,11 +29,6 @@ enum AppSettings {
         set { defaults.set(newValue, forKey: "togglePanelHotkey") }
     }
 
-    static var dictateHotkey: String {
-        get { defaults.string(forKey: "dictateHotkey") ?? "ctrl+shift+space" }
-        set { defaults.set(newValue, forKey: "dictateHotkey") }
-    }
-
     static var autoCloseEnabled: Bool {
         get { defaults.object(forKey: "autoCloseEnabled") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "autoCloseEnabled") }

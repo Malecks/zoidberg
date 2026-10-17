@@ -5,10 +5,8 @@ struct CapturePanel: View {
     @State private var textInput = ""
     @State private var escapeHoldTimer: Timer?
     @State private var isHoldingEscape = false
-    @State private var micHover = false
     @State private var borderRotation: Double = -0.5
     @State private var borderOpacity: Double = 0
-    var onToggleDictation: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -137,27 +135,7 @@ struct CapturePanel: View {
             }
             
             Spacer()
-            
-            if appState.isDictating {
-                AudioWaveView(level: appState.audioLevel)
-                    .transition(.opacity)
-            }
-
-            Button(action: { onToggleDictation?() }) {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(appState.isDictating ? .red : (micHover ? .white : .white.opacity(0.5)))
-                    .frame(width: 28, height: 28)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(micHover && !appState.isDictating ? Color.white.opacity(0.12) : Color.clear)
-                    )
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .onHover { micHover = $0 }
         }
-        .animation(.easeInOut(duration: 0.2), value: appState.isDictating)
         .animation(.easeInOut(duration: 0.5), value: statusText)
         .animation(.easeInOut(duration: 0.5), value: appState.isIdle)
         .padding(.vertical, 12)
@@ -177,9 +155,6 @@ struct CapturePanel: View {
         if appState.toastMessage != nil {
             return appState.toastIsError ? "Error" : "Saved"
         }
-        if appState.isDictating {
-            return "Listening"
-        }
         if appState.isIdle && appState.hasContent {
             return "Press ⌘ ↩ to save"
         }
@@ -191,7 +166,6 @@ struct CapturePanel: View {
         if appState.isDiscardHolding { return .red }
         if appState.isDragOver { return .blue }
         if appState.toastMessage != nil { return appState.toastIsError ? .red : .green }
-        if appState.isDictating { return .red }
         if appState.isIdle { return .green }
         return .white.opacity(0.85)
     }
